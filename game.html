@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻牌作業</title>
+    <!-- 引入bootstrap -->
+    <link rel="stylesheet" href=https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.css />
+    <style>
+        .hidden {
+            visibility: hidden;
+        }
+
+        #main {
+            position: relative;
+            width: 80vw;
+            height: 80vh;
+            padding: 0;
+            margin: auto;
+        }
+
+        /* 標題區--------------------------------------------------------------------- */
+        .game-title {
+            width: 100%;
+            height: 30%;
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translate(0%, -50%);
+            text-align: center;
+            transition: all 1s ease-in-out;
+            z-index: 5;
+            background: rgba(0, 0, 1, 0.1);
+        }
+
+        .shrink-move {
+            top: 0;
+            transform: translate(0%, 0%);
+            height: 20%;
+        }
+
+        .title img {
+            width: 100%;
+        }
+
+
+        .title-shrink {
+            width: 45%;
+        }
+
+        /* 卡片區塊 + 進度條及計時器 */
+        #game-container {
+            width: 100%;
+            height: 65vh;
+            position: absolute;
+            top: 20%;
+            /* background: cadetblue; */
+        }
+
+        /* 卡片區塊---------------------------------------------------- */
+        #game {
+            width: 100%;
+            height: 90%;
+            position: relative;
+            /* top: 20%;  */
+            /* background: chartreuse; */
+        }
+
+        /* 卡片--------------------------------------------------------*/
+        .card {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin: 10px;
+            /* 設定子元素在3D空間內 */
+            transform-style: preserve-3d;
+            /* 使他們並排 */
+            float: left;
+            transition: transform 1s;
+        }
+
+        .card-front {
+            width: 100%;
+            height: 100%;
+            background: white;
+            position: absolute;
+            text-align: center;
+            font-size: 35px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* 把背面隱藏 */
+            backface-visibility: hidden;
+        }
+
+        .card-back {
+            width: 100%;
+            height: 100%;
+            background-image: url(./img/card-back.jpg);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: absolute;
+            backface-visibility: hidden;
+            /* 預設180deg，讓他翻到背面 */
+            transform: rotateY(180deg);
+        }
+
+        .card-close {
+            transform: rotateY(180deg);
+        }
+
+        /* 滑鼠滑過卡片產生陰影 */
+        .card:hover {
+            /* box-shadow: 0 0 5px red; */
+            cursor: pointer;
+        }
+
+        /* 遊戲區下方區塊----------------------------------------------- */
+        #footer {
+            width: 100%;
+            height: 10%;
+            position: relative;
+            /* top: 85%; */
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            /* background: chocolate; */
+        }
+
+
+
+        /* 進度條 */
+        #progress {
+            width: 80%;
+            height: 30px;
+        }
+
+        #progress-bar {
+            width: 0%;
+            background-color: rgb(247, 70, 0);
+        }
+
+        /* 計時器 */
+        #time {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 5px solid rgb(200, 0, 0);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <!-- 標題區 -->
+        <div class="game-title d-flex flex-column justify-content-center align-items-center ">
+            <div class="title">
+                <img src="./img/title.gif">
+            </div>
+            <form>
+                <span>請選擇題目：</span>
+                <select id="choice-game">
+                    <option value="Hiragana">平假名</option>
+                    <option value="Katakana">片假名</option>
+                </select>
+                <input type="submit" value="開始遊戲" class="game_btn">
+            </form>
+
+        </div>
+
+        <!-- 遊戲區域 -->
+        <div id="game-container">
+            <div id="game" class="hidden container-fluid text-center">
+            </div>
+
+            <div id="footer">
+                <!-- 進度條 -->
+                <div id="progress" class="progress hidden">
+                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+                </div>
+                <!-- 計時器 -->
+                <div id="time" class="hidden">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入JQ -->
+    <script src=https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js></script>
+    <!-- 引入Vue -->
+    <script src=https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.27/vue.global.min.js></script>
+    <!-- 引入bootsraps -->
+    <script src=https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.js></script>
+
+    <script>
+        // 牌面花色
+        // 平假名
+        const Hiragana = ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ', 'さ', 'し', 'す', 'せ', 'そ', 'た', 'ち', 'つ', 'て', 'と', 'な', 'に', 'ぬ', 'ね', 'の', 'は', 'ひ', 'ふ', 'へ', 'ほ', 'ま', 'み', 'む', 'め', 'も', 'や', 'ゆ', 'よ', 'ら', 'り', 'る', 'れ', 'ろ', 'わ', 'を', 'ん']
+        // 片假名
+        const Katakana = ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'ク', 'ケ', 'コ', 'サ', 'シ', 'ス', 'セ', 'ソ', 'タ', 'チ', 'ツ', 'テ', 'ト', 'ナ', '二', 'ヌ', 'ネ', 'ノ', 'ハ', 'ヒ', 'フ', 'ヘ', 'ホ', 'マ', 'ミ', 'ム', 'メ', 'モ', 'ヤ', 'ユ', 'ヨ', 'ラ', 'リ', 'ル', 'レ', 'ロ', 'ワ', 'ン', 'ヲ']
+        // 拼音
+        const Pinyin = ['a', 'i', 'u', 'e', 'o', 'ka', 'ki', 'ku', 'ke', 'ko', 'sa', 'shi', 'su', 'se', 'so', 'ta', 'chi', 'tsu', 'te', 'to', 'na', 'ni', 'nu', 'ne', 'no', 'ha', 'hi', 'fu', 'he', 'ho', 'ma', 'mi', 'mu', 'me', 'mo', 'ya', 'yu', 'yo', 'ra', 'ri', 'ru', 're', 'ro', 'wa', 'wo', 'n']
+
+
+
+        // 按下開始按鈕，產生隨機排列的卡片
+        $('.game_btn').click(function () {
+            // 停用按鈕、選單
+            $(this).attr('disabled', true)
+            $('#choice-game').attr('disabled', true)
+
+            // 遊戲標題區塊移動至最上方
+            $('.game-title').addClass('shrink-move')
+            // 縮小標題區裡的文字
+            $('.title').addClass('title-shrink')
+
+
+            // 顯示遊戲區域、剩餘時間、已答對題數、進度條
+            $('.hidden').removeClass('hidden')
+
+
+            // 產生二十張卡片
+            for (let i = 0; i < 20; i++) {
+                $('#game').append(`
+                    <div class="card-container col-2 d-flex justify-content-center">
+                        <div class="card card-close">
+                            <div class="card-front"></div>
+                            <div class="card-back"></div>
+                        </div>
+                    </div>
+            `)
+            }
+
+
+            // 隨機分配花色
+            // random陣列用於避免取到重複的花色
+            let random = []
+            // 總共取出十組花色 (20/2=10)
+            for (let i = 0; i < 10; i++) {
+                // 隨機取一個數字做為花色之index
+                let randomNumber = Math.round(Math.random() * 45)
+
+                // 如果這個數字還沒出現過，則進行下方步驟
+                if (!random.includes(randomNumber)) {
+                    random.push(randomNumber)
+                    // 前面十張(index 0-9)是平or片假名
+                    // 選擇平假名關卡
+                    if ($("#choice-game").val() === "Hiragana") {
+                        $('.card-front').eq(i).text(Hiragana[randomNumber])
+                    }
+                    // 選擇片假名關卡
+                    else if ($("#choice-game").val() === "Katakana") {
+                        $('.card-front').eq(i).text(Katakana[randomNumber])
+                    }
+                    $('.card-front').eq(i).attr('data-number', randomNumber)
+                    //後面十張(index 10-19)是羅馬拼音
+                    $('.card-front').eq(i + 10).text(Pinyin[randomNumber])
+                    $('.card-front').eq(i + 10).attr('data-number', randomNumber)
+                } else {
+                    i--
+                }
+            }
+
+            // 打亂牌
+            for (let i = 0; i < 40; i++) {
+                const randA = Math.round(Math.random() * 19)
+                const randB = Math.round(Math.random() * 19)
+                $('.card-container').eq(randA).insertAfter($('.card-container').eq(randB))
+            }
+
+            // 排版（每五張一排）
+            for (let i = 0; i < $('.card-container').length; i += 5) {
+                $('.card-container').slice(i, i + 5).wrapAll('<div class="row d-flex justify-content-center"></div>');
+            }
+
+
+            setTimeout(function () {
+                // 按下按鈕1.2秒後會將全部的牌打開
+                $('.card').removeClass('card-close')
+                // 再過3秒會將牌關起來
+                setTimeout(function () {
+                    $('.card').addClass('card-close')
+                    setTimeout(() => {
+                        alert('遊戲開始')
+
+                        // 開始計時
+                        let time = 0
+                        const timer = setInterval(() => {
+                            time++
+                            $('#time').text(time)
+                        }, 1000)
+
+
+                        // 開始計時之後開始進行翻牌的判斷
+                        let bingo = 0 // 答對題數
+
+                        $('.card').click(function () {
+                            // 翻牌動作
+                            if (
+                                // 打開的牌小於兩張
+                                $('.card:not(.card-close)').length < 2 &&
+                                // 這張牌目前關起來
+                                $(this).hasClass('card-close') &&
+                                // 這張牌尚未被配對
+                                !$(this).hasClass('card-ok')
+                            ) {
+                                $(this).removeClass('card-close')
+                            }
+
+                            // 翻開兩張牌之後，要進行判斷
+                            if ($('.card:not(.card-close)').length === 2) {
+                                // 如果兩張都一樣就加上.card-ok並淡出
+                                if ($('.card:not(.card-close) .card-front').eq(0).attr('data-number') ===
+                                    $('.card:not(.card-close) .card-front').eq(1).attr('data-number')
+                                ) {
+                                    $('.card:not(.card-close)').addClass('card-ok')
+                                    $('.card:not(.card-close)').fadeTo(1000, 0)
+                                    bingo++
+                                    console.log(bingo)
+                                    $('.progress-bar').css('width', `${bingo * 10}%`)
+                                    $('#bingo').text(`已答對${bingo}題，剩餘${10 - bingo}題`)
+                                }
+                                setTimeout(function () {
+                                    // 把不對的牌蓋起來
+                                    $('.card:not(.card-close)').addClass('card-close')
+                                    // 當全部答對，結束計時並顯示alert
+                                    if (
+                                        $('.card-ok').length === $('.card').length
+                                    ) {
+                                        clearInterval(timer)
+                                        alert(`恭喜過關，總共花費${time}秒`)
+                                        // 清除遊戲區域
+                                        $('#game').text('')
+                                        // 計時器歸零
+                                        $('#time').text(0)
+
+                                        // 進度條歸零
+                                        $('.progress-bar').css('width', `0%`)
+
+                                        // 使按鈕、選單重新啟用
+                                        $('.game_btn').attr('disabled', false)
+                                        $('#choice-game').attr('disabled', false)
+                                    }
+                                }, 1000)
+                            }
+                        })
+                    }, 1000);
+                }, 3000)
+            }, 1200)
+        })
+
+
+
+
+
+    </script>
+</body>
+
+</html>
